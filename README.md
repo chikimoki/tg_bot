@@ -84,3 +84,64 @@ python bot.py
 - Паттерны для блокировки упоминаний/телефонов хранятся в `data/config.yaml`.
 
 
+Установка Python на Windows (для новичков)
+--------------------------------
+Если вы совсем не знакомы с установкой Python на Windows, выполните следующие шаги.
+
+1) Скачайте установщик
+- Откройте сайт: https://www.python.org/downloads/windows/
+- Нажмите "Download Python 3.10.x" (или более новую стабильную версию).
+
+2) Запустите установщик (ВАЖНО)
+- При запуске инсталлятора ОБЯЗАТЕЛЬНО отметьте галочку "Add Python 3.10 to PATH" внизу окна установщика.
+- Выберите "Install Now" (рекомендуется).
+
+3) Проверка в командной строке
+- Откройте PowerShell или CMD (Win+R, введите cmd или powershell).
+- Введите:
+
+```powershell
+python --version
+pip --version
+```
+
+Если вы видите версию Python и pip — всё установлено и PATH настроен.
+
+4) Если Python не распознаётся (ошибка "'python' is not recognized...")
+- Возможно, вы пропустили галочку "Add to PATH". Решение:
+	- Перезапустите установщик и выберите "Modify", затем отметьте "Add Python to environment variables" и примените.
+	- Либо добавьте путь вручную: откройте Пуск → "Edit the system environment variables" → Environment Variables → в разделе User variables найдите PATH → Edit → New и добавьте путь к папке с Python, например:
+		- C:\Users\<ВашUser>\AppData\Local\Programs\Python\Python310\
+		- и к скриптам: C:\Users\<ВашUser>\AppData\Local\Programs\Python\Python310\Scripts\
+
+5) Создание виртуального окружения и установка зависимостей (PowerShell)
+
+```powershell
+cd C:\path\to\your\project\bot
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+Если PowerShell блокирует выполнение скриптов (ошибка ExecutionPolicy), временно разрешите:
+
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+# затем снова активируйте .venv
+.\.venv\Scripts\Activate.ps1
+```
+
+6) Настройка `.env` и запуск
+- Скопируйте `.env.example` в `.env` и заполните `BOT_TOKEN`.
+- Запустите бот:
+
+```powershell
+python bot.py
+```
+
+Полезные советы для начинающих
+- Если видите ошибки при установке пакетов, убедитесь, что вы активировали виртуальное окружение.
+- Если бот не стартует и пишет про `BOT_TOKEN`, проверьте `.env` и убедитесь, что в нём есть строка `BOT_TOKEN="ваш_токен"`.
+- При возникновении проблем пришлите ошибку сюда, и я помогу.
+
+
