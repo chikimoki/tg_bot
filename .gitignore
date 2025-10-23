@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+env/
+venv/
+.venv/
+.Python
+build/
+dist/
+.eggs/
+*.egg-info/
+pip-wheel-metadata/
+.pytest_cache/
+
+# Environments
+.env
+.env.*
+
+# VS Code
+.vscode/
+
+# Data files created by bot
+/data/*.json
+/data/*.yaml
+/data/*.lock
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

@@ -1,0 +1,10 @@
+admins:
+  - 1869782155  # ЗАМЕНИ на свой Telegram user_id (можно добавить несколько)
+banned_regex:
+  - "@[A-Za-z0-9_]{3,32}"    # запрет @username
+  - "\\+?\\d[\\d\\s\\-]{7,}\\b"  # запрет на телефоноподобные строки
+default_curator: null        # ЗАМЕНИ на chat_id куратора или оставь null (лучше null)
+branding:
+  student_tag_prefix: "S"
+
+# 1869782155
