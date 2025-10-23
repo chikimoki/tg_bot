@@ -88,6 +88,10 @@ CONFIG_LOCK = FileLock(str(CONFIG_YAML) + ".lock")
 MAPPINGS_LOCK = FileLock(str(MAPPINGS_JSON) + ".lock")
 THREADS_LOCK = FileLock(str(THREADS_JSON) + ".lock")
 
+# Blocked events storage
+BLOCKED_JSON = DATA_DIR / "blocked.json"
+BLOCKED_LOCK = FileLock(str(BLOCKED_JSON) + ".lock")
+
 DEFAULT_CONFIG = {
     "admins": [],  # Telegram user IDs allowed to use admin commands
     "banned_regex": [
@@ -127,6 +131,39 @@ def save_json(path: Path, data: dict) -> None:
     lock = MAPPINGS_LOCK if path == MAPPINGS_JSON else THREADS_LOCK
     with lock:
         path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def load_blocked() -> dict:
+    with BLOCKED_LOCK:
+        if not BLOCKED_JSON.exists():
+            BLOCKED_JSON.write_text(json.dumps({"blocked": []}, ensure_ascii=False, indent=2), encoding="utf-8")
+            return {"blocked": []}
+        return json.loads(BLOCKED_JSON.read_text(encoding="utf-8"))
+
+
+def save_blocked(data: dict) -> None:
+    with BLOCKED_LOCK:
+        BLOCKED_JSON.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def record_blocked_event(sender_id: int, sender_username: Optional[str], direction: str, target: Optional[int], target_ticket: Optional[str], text: Optional[str], reason: str) -> None:
+    """Append a blocked event to data/blocked.json (thread-safe).
+
+    Fields: ts, sender_id, sender_username, direction, target, target_ticket, text_preview, reason
+    """
+    ev = {
+        "ts": int(time.time()),
+        "sender_id": sender_id,
+        "sender_username": sender_username,
+        "direction": direction,
+        "target": target,
+        "target_ticket": target_ticket,
+        "text_preview": (text[:500] + "...") if text and len(text) > 500 else (text or ""),
+        "reason": reason,
+    }
+    data = load_blocked()
+    data.setdefault("blocked", []).append(ev)
+    save_blocked(data)
 
 
 # --------------------------- Seen Users (first-contact registry) ---------------------------
@@ -532,7 +569,19 @@ async def to_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         cfg = get_config()
         reason = violates_policies(payload_text or "", cfg)
         if reason:
+            # Acknowledge to curator (appear delivered) but do NOT forward
+            try:
+                await update.message.reply_text("Доставлено")
+            except Exception:
+                pass
             await notify_admins(context.application, cfg, f"BLOCKED (/to curator->student) from {user_id}: {reason}\n{payload_text}")
+            # record blocked event
+            ticket = None
+            try:
+                ticket = get_mappings().get("students", {}).get(str(target_student), {}).get("ticket")
+            except Exception:
+                ticket = None
+            record_blocked_event(sender_id=user_id, sender_username=getattr(update.effective_user, "username", None), direction="/to curator->student", target=target_student, target_ticket=ticket, text=payload_text, reason=reason)
             return
 
         await context.bot.send_message(chat_id=target_student, text=payload_text)
@@ -598,11 +647,18 @@ async def handle_from_student(update: Update, context: ContextTypes.DEFAULT_TYPE
     text = caption_of(msg)
     reason = violates_policies(text or "", cfg)
     if reason:
+        # Acknowledge to student (appear delivered) but do NOT forward
+        try:
+            await msg.reply_text("Отправлено куратору ✅")
+        except Exception:
+            pass
         await notify_admins(
             context.application,
             cfg,
             f"BLOCKED (student->curator) from {student_id}: {reason}\n{text}"
         )
+        # record to blocked.json
+        record_blocked_event(sender_id=student_id, sender_username=getattr(update.effective_user, "username", None), direction="student->curator", target=None, target_ticket=None, text=text, reason=reason)
         return
 
     # 2) Resolve binding (or use default_curator)
@@ -662,11 +718,18 @@ async def handle_from_curator(update: Update, context: ContextTypes.DEFAULT_TYPE
     text = caption_of(msg)
     reason = violates_policies(text or "", cfg)
     if reason:
+        # Acknowledge to curator (appear delivered) but do NOT forward
+        try:
+            await msg.reply_text("Отправлено студенту ✅")
+        except Exception:
+            pass
         await notify_admins(
             context.application,
             cfg,
             f"BLOCKED (curator->student) from {msg.chat_id}: {reason}\n{text}"
         )
+        # record to blocked.json
+        record_blocked_event(sender_id=msg.chat_id, sender_username=getattr(msg.from_user, "username", None), direction="curator->student", target=None, target_ticket=None, text=text, reason=reason)
         return
 
     # Must be a reply to a bot message that came from a student
@@ -710,8 +773,20 @@ async def any_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         txt = caption_of(msg)
         reason = violates_policies(txt or "", cfg)
         if reason:
+            # Acknowledge to curator (appear delivered) but do NOT forward
+            try:
+                await update.message.reply_text("Доставлено")
+            except Exception:
+                pass
             await notify_admins(context.application, cfg, f"BLOCKED (/to curator->student) from {user_id}: {reason}\n{txt or ''}")
-            # по твоему требованию — без уведомлений куратору/ученику
+            # record blocked event for awaiting /to
+            ticket = None
+            try:
+                ticket = get_mappings().get("students", {}).get(str(target_student), {}).get("ticket")
+            except Exception:
+                ticket = None
+            record_blocked_event(sender_id=user_id, sender_username=getattr(update.effective_user, "username", None), direction="/to curator->student", target=target_student, target_ticket=ticket, text=txt, reason=reason)
+            # сбрасываем состояние
             context.user_data.pop("awaiting_to", None)
             context.user_data.pop("to_target", None)
             return

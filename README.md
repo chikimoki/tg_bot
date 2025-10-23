@@ -30,6 +30,36 @@ cp .env.example .env
 export BOT_TOKEN="<ваш_токен_бота>"
 ```
 
+Windows (PowerShell и CMD)
+--------------------------------
+Если вы работаете на Windows, используйте PowerShell или CMD. Примеры ниже предполагают, что у вас установлен Python 3.10+ и добавлен в PATH.
+
+PowerShell (рекомендуется):
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+copy .env.example .env
+# отредактируйте .env (например в Notepad) и вставьте BOT_TOKEN
+python bot.py
+```
+
+CMD (Command Prompt):
+
+```cmd
+python -m venv .venv
+.\.venv\Scripts\activate.bat
+pip install -r requirements.txt
+copy .env.example .env
+rem отредактируйте .env в Блокноте
+python bot.py
+```
+
+Запуск в фоне / как сервис
+--------------------------------
+Для долгоживущего запуска на Windows можно использовать Task Scheduler или запускаемый сервис через NSSM (https://nssm.cc/) чтобы бот автоматически перезапускался и запускался при старте системы.
+
 4. Отредактируйте `data/config.yaml` — добавьте ваш Telegram user_id в `admins` и при желании укажите `default_curator`.
 
 5. Запустите бота:
